@@ -1,0 +1,1 @@
+document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll('.view-result').forEach(b=>b.onclick=()=>{localStorage.setItem('indy2PrototypeInput',b.dataset.message);location.href='results.html'}));
