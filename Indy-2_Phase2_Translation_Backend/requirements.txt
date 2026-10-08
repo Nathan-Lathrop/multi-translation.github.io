@@ -1,4 +1,0 @@
-googletrans==4.0.2
-fastapi
-uvicorn[standard]
-pydantic
