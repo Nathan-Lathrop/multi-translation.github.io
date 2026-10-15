@@ -6,7 +6,7 @@ const add = document.getElementById("addLanguage");
 const count = document.getElementById("translationCount");
 
 // Replace this with your real Cloud Run service URL.
-const API_URL = "https://YOUR-CLOUD-RUN-URL";
+const API_URL = "https://indy-2-api-1074577122547.us-east1.run.app/";
 
 const opts = [
     ["zh-CN", "Chinese (zh-CN)"],
