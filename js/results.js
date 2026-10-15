@@ -1,4 +1,3 @@
-```javascript
 document.addEventListener("DOMContentLoaded", () => {
     const originalElement = document.getElementById("originalMessage");
     const resultsContainer = document.getElementById("translationResults");
@@ -124,4 +123,3 @@ document.addEventListener("DOMContentLoaded", () => {
         similarityResults.hidden = true;
     }
 });
-```
