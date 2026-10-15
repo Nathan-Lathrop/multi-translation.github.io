@@ -1,127 +1,83 @@
-```javascript
-document.addEventListener("DOMContentLoaded", () => {
-    const originalElement = document.getElementById("originalMessage");
-    const resultsContainer = document.getElementById("translationResults");
-    const tableBody = document.getElementById("translationTableBody");
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indy-2 | Analysis Results</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="brand">
+            <div class="brand-name">Indy-2</div>
+            <div class="brand-subtitle">Multi-Translation Analysis</div>
+        </div>
 
-    const originalText = localStorage.getItem("indy2PrototypeInput");
-    const rawResults = localStorage.getItem("indy2TranslationResults");
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="history.html">History</a>
+            <a href="index.html#about">About</a>
+        </nav>
+    </header>
 
-    if (originalElement) {
-        originalElement.textContent =
-            originalText || "No original message found.";
-    }
+    <main class="page-container">
+        <section class="results-card">
+            <div class="results-header">
+                <div>
+                    <span class="eyebrow">Analysis Results</span>
+                    <h1>Translation Analysis</h1>
+                </div>
+                <a class="secondary-button" href="index.html">New Analysis</a>
+            </div>
 
-    function addElement(parent, tag, text, className = "") {
-        const element = document.createElement(tag);
-        element.textContent = text ?? "";
-        if (className) element.className = className;
-        parent.appendChild(element);
-        return element;
-    }
+            <div class="original-message">
+                <h2>Original Message</h2>
+                <p id="originalMessage">Loading original message...</p>
+            </div>
 
-    if (!rawResults) {
-        if (resultsContainer) {
-            addElement(
-                resultsContainer,
-                "p",
-                "No translation results found. Return to the home page and submit a message."
-            );
-        }
+            <!-- Populated by results.js -->
+            <div id="translationResults"></div>
 
-        if (tableBody) {
-            tableBody.replaceChildren();
-            const row = document.createElement("tr");
-            const cell = document.createElement("td");
-            cell.colSpan = 4;
-            cell.textContent = "No translation results available.";
-            row.appendChild(cell);
-            tableBody.appendChild(row);
-        }
-        return;
-    }
+            <div class="table-wrapper">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Step</th>
+                            <th>Language</th>
+                            <th>Translation</th>
+                            <th>Back-Translation (English)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="translationTableBody">
+                        <tr>
+                            <td colspan="4">Loading translation results...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-    let result;
+            <div id="similarityResults" class="loss-alert" hidden>
+                <div class="alert-icon">!</div>
+                <div>
+                    <strong id="similaritySummary"></strong>
+                    <span id="similarityDetails"></span>
+                </div>
+            </div>
 
-    try {
-        result = JSON.parse(rawResults);
-    } catch (error) {
-        console.error("Unable to parse saved translation results:", error);
+            <div class="prototype-note">
+                <strong>Current implementation:</strong>
+                Translations are retrieved from Google Cloud Translation.
+                Semantic similarity scoring has not yet been connected, so
+                similarity scores and loss values are not currently available.
+            </div>
+        </section>
+    </main>
 
-        if (resultsContainer) {
-            addElement(
-                resultsContainer,
-                "p",
-                "The saved translation results could not be read."
-            );
-        }
-        return;
-    }
+    <footer class="site-footer">
+        <span>Indy-2 — AI 7993 Capstone</span>
+        <span>Multi-Translation Analysis</span>
+    </footer>
 
-    const steps = Array.isArray(result.steps) ? result.steps : [];
-
-    if (resultsContainer) {
-        resultsContainer.replaceChildren();
-
-        addElement(resultsContainer, "h2", "Translation Path");
-
-        const path = Array.isArray(result.language_path_display)
-            ? result.language_path_display
-            : ["English"];
-
-        addElement(resultsContainer, "p", path.join(" → "));
-
-        addElement(resultsContainer, "h2", "Final Translation");
-        addElement(
-            resultsContainer,
-            "p",
-            result.final_translation || "No final translation returned."
-        );
-    }
-
-    if (tableBody) {
-        tableBody.replaceChildren();
-
-        if (steps.length === 0) {
-            const row = document.createElement("tr");
-            const cell = document.createElement("td");
-            cell.colSpan = 4;
-            cell.textContent = "No translation steps were returned.";
-            row.appendChild(cell);
-            tableBody.appendChild(row);
-        } else {
-            steps.forEach((step) => {
-                const row = document.createElement("tr");
-
-                const language =
-                    step.target_language_name ||
-                    step.target_language ||
-                    "Unknown";
-
-                const values = [
-                    step.step ?? "",
-                    language,
-                    step.translated_text || "",
-                    step.back_translation || ""
-                ];
-
-                values.forEach((value) => {
-                    const cell = document.createElement("td");
-                    cell.textContent = String(value);
-                    row.appendChild(cell);
-                });
-
-                tableBody.appendChild(row);
-            });
-        }
-    }
-
-    // Semantic similarity is not yet returned by the backend.
-    const similarityResults =
-        document.getElementById("similarityResults");
-
-    if (similarityResults) {
-        similarityResults.hidden = true;
-    }
-});
-```
+    <script src="js/results.js"></script>
+</body>
+</html>
