@@ -2,44 +2,51 @@
 document.addEventListener("DOMContentLoaded", () => {
     const originalElement = document.getElementById("originalMessage");
 
-    const originalText =
-        localStorage.getItem("indy2PrototypeInput");
+    const rawResults = localStorage.getItem("indy2TranslationResults");
+    const originalText = localStorage.getItem("indy2PrototypeInput");
+    const savedLanguages = localStorage.getItem("indy2PrototypeLanguages");
 
-    const rawResults =
-        localStorage.getItem("indy2TranslationResults");
-
+    // Display the original message.
     if (originalElement) {
         originalElement.textContent = originalText || "No original message found.";
     }
 
-    // Find an existing results container if the page has one.
-    // Otherwise, create one beneath the original message.
-    let resultsContainer = document.getElementById("translationResults");
+    // Find or create the results container.
+    let container = document.getElementById("translationResults");
 
-    if (!resultsContainer && originalElement) {
-        resultsContainer = document.createElement("section");
-        resultsContainer.id = "translationResults";
-        originalElement.insertAdjacentElement("afterend", resultsContainer);
+    if (!container && originalElement) {
+        container = document.createElement("section");
+        container.id = "translationResults";
+        originalElement.insertAdjacentElement("afterend", container);
     }
 
-    if (!resultsContainer) {
-        console.error(
-            "Could not find #originalMessage or create a results container."
-        );
+    if (!container) {
+        console.error("Could not find the original message or results container.");
         return;
     }
 
-    resultsContainer.replaceChildren();
+    container.replaceChildren();
 
-    const heading = document.createElement("h2");
-    heading.textContent = "Translation Results";
-    resultsContainer.appendChild(heading);
+    function addTextElement(parent, tag, textContent, className = "") {
+        const element = document.createElement(tag);
+        element.textContent = textContent;
+
+        if (className) {
+            element.className = className;
+        }
+
+        parent.appendChild(element);
+        return element;
+    }
+
+    addTextElement(container, "h2", "Translation Results");
 
     if (!rawResults) {
-        const message = document.createElement("p");
-        message.textContent =
-            "No translation results are saved. Return to the main page and submit a translation.";
-        resultsContainer.appendChild(message);
+        addTextElement(
+            container,
+            "p",
+            "No translation results found. Return to the main page and submit a message."
+        );
         return;
     }
 
@@ -48,39 +55,113 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
         result = JSON.parse(rawResults);
     } catch (error) {
-        console.error("Could not parse saved translation results:", error);
+        console.error("Unable to parse translation results:", error);
 
-        const message = document.createElement("p");
-        message.textContent = "The saved translation results could not be read.";
-        resultsContainer.appendChild(message);
+        addTextElement(
+            container,
+            "p",
+            "The saved translation results could not be read."
+        );
         return;
     }
 
-    const languages = JSON.parse(
-        localStorage.getItem("indy2PrototypeLanguages") || "[]"
+    const steps = Array.isArray(result.steps) ? result.steps : [];
+
+    let languages = [];
+
+    try {
+        languages = JSON.parse(savedLanguages || "[]");
+    } catch {
+        languages = [];
+    }
+
+    // Show the translation path.
+    addTextElement(container, "h3", "Translation Path");
+
+    const path = [
+        "English",
+        ...(result.language_path_display || languages),
+        ...(result.language_path_display ? [] : [])
+    ];
+
+    // language_path_display already includes the initial English entry.
+    const displayPath = result.language_path_display
+        ? result.language_path_display
+        : ["English", ...languages.map(code => code)];
+
+    if (
+        displayPath.length > 0 &&
+        displayPath[displayPath.length - 1] !== "English"
+    ) {
+        displayPath.push("English (back-translation)");
+    }
+
+    addTextElement(container, "p", displayPath.join(" → "));
+
+    // Show the final translation.
+    addTextElement(container, "h3", "Final Translation");
+
+    addTextElement(
+        container,
+        "p",
+        result.final_translation || "No final translation returned."
     );
 
-    const pathHeading = document.createElement("h3");
-    pathHeading.textContent = "Selected Translation Path";
-    resultsContainer.appendChild(pathHeading);
+    // Show each translation step.
+    addTextElement(container, "h3", "Translation Steps");
 
-    const pathText = document.createElement("p");
-    pathText.textContent = ["English", ...languages, "English"].join(" → ");
-    resultsContainer.appendChild(pathText);
+    if (steps.length === 0) {
+        addTextElement(container, "p", "No translation steps were returned.");
+        return;
+    }
 
-    const dataHeading = document.createElement("h3");
-    dataHeading.textContent = "Backend Response";
-    resultsContainer.appendChild(dataHeading);
+    steps.forEach(step => {
+        const card = document.createElement("article");
+        card.className = "translation-result-step";
 
-    // Render the response safely as formatted text.
-    // This works without assuming the backend's exact JSON field names.
-    const responseDisplay = document.createElement("pre");
-    responseDisplay.style.whiteSpace = "pre-wrap";
-    responseDisplay.style.overflowWrap = "anywhere";
-    responseDisplay.style.padding = "1rem";
-    responseDisplay.style.borderRadius = "8px";
-    responseDisplay.style.overflowX = "auto";
-    responseDisplay.textContent = JSON.stringify(result, null, 2);
+        card.style.border = "1px solid #ddd";
+        card.style.borderRadius = "8px";
+        card.style.padding = "16px";
+        card.style.margin = "16px 0";
 
-    resultsContainer.appendChild(responseDisplay);
+        const sourceName =
+            step.source_language_name || step.source_language || "Unknown";
+
+        const targetName =
+            step.target_language_name || step.target_language || "Unknown";
+
+        addTextElement(
+            card,
+            "h4",
+            `Step ${step.step}: ${sourceName} → ${targetName}`
+        );
+
+        addTextElement(card, "h5", "Input to this step");
+        addTextElement(card, "p", step.input_text || "(No input text returned)");
+
+        addTextElement(card, "h5", "Translated Text");
+        addTextElement(
+            card,
+            "p",
+            step.translated_text || "(No translated text returned)"
+        );
+
+        addTextElement(card, "h5", "English Back-Translation");
+        addTextElement(
+            card,
+            "p",
+            step.back_translation || "(No back-translation returned)"
+        );
+
+        container.appendChild(card);
+    });
+
+    // Similarity scoring will be displayed here once implemented.
+    addTextElement(container, "h3", "Semantic Similarity");
+
+    addTextElement(
+        container,
+        "p",
+        "Similarity scores are not available yet. The cross-encoder model has not been connected to the backend."
+    );
 });
