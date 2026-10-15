@@ -5,7 +5,8 @@ const chain = document.getElementById("languageChain");
 const add = document.getElementById("addLanguage");
 const count = document.getElementById("translationCount");
 
-const API_URL = "https://indy-2-api-1074577122547.us-east1.run.app";
+// Replace this with your real Cloud Run service URL.
+const API_URL = "https://YOUR-CLOUD-RUN-URL";
 
 const opts = [
     ["zh-CN", "Chinese (zh-CN)"],
@@ -20,7 +21,6 @@ const opts = [
     ["ko", "Korean (ko)"]
 ];
 
-// Create a dropdown for one translation step.
 function makeSelect(i) {
     const wrapper = document.createElement("div");
     wrapper.className = "language-step";
@@ -42,17 +42,19 @@ function makeSelect(i) {
     return wrapper;
 }
 
-// Keep the visible dropdowns synchronized with the selected step count.
 function sync() {
     const numberOfSteps = Number(count.value);
-    const currentSteps = chain.querySelectorAll(".language-step").length;
 
-    while (chain.querySelectorAll(".language-step").length < numberOfSteps) {
+    while (
+        chain.querySelectorAll(".language-step").length <
+        numberOfSteps
+    ) {
         const arrow = document.createElement("span");
         arrow.className = "chain-arrow";
         arrow.textContent = "→";
 
-        const nextStep = chain.querySelectorAll(".language-step").length + 1;
+        const nextStep =
+            chain.querySelectorAll(".language-step").length + 1;
 
         chain.append(arrow, makeSelect(nextStep));
     }
@@ -69,7 +71,6 @@ function sync() {
     });
 }
 
-// Add another translation step, up to five.
 add.onclick = () => {
     if (Number(count.value) < 5) {
         count.value = Number(count.value) + 1;
@@ -81,7 +82,6 @@ add.onclick = () => {
 
 count.onchange = sync;
 
-// Submit the input to the Cloud Run backend.
 form.onsubmit = async (event) => {
     event.preventDefault();
 
@@ -92,14 +92,8 @@ form.onsubmit = async (event) => {
         return;
     }
 
-    if (
-        !API_URL ||
-        API_URL.includes("YOUR-CLOUD-RUN-URL")
-    ) {
-        alert(
-            "The backend URL has not been configured. " +
-            "Update API_URL in app.js first."
-        );
+    if (API_URL.includes("YOUR-CLOUD-RUN-URL")) {
+        alert("Replace the API_URL placeholder in app.js with your Cloud Run URL.");
         return;
     }
 
@@ -110,10 +104,13 @@ form.onsubmit = async (event) => {
         .map(select => select.value);
 
     const submitButton = form.querySelector('[type="submit"]');
+    const originalButtonText = submitButton
+        ? submitButton.textContent
+        : "";
 
     if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = "Processing...";
+        submitButton.textContent = "Translating...";
     }
 
     try {
@@ -128,30 +125,34 @@ form.onsubmit = async (event) => {
             })
         });
 
-        if (!response.ok) {
-            const details = await response.text();
+        const responseText = await response.text();
 
+        let result;
+
+        try {
+            result = JSON.parse(responseText);
+        } catch {
             throw new Error(
-                `Backend error (${response.status}): ${details}`
+                `The backend returned an invalid response: ${responseText}`
             );
         }
 
-        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(
+                result.detail || `Backend error: ${response.status}`
+            );
+        }
 
-        // Save the submitted input, selected languages, and API response.
         localStorage.setItem("indy2PrototypeInput", inputText);
-
         localStorage.setItem(
             "indy2PrototypeLanguages",
             JSON.stringify(selectedLanguages)
         );
-
         localStorage.setItem(
             "indy2TranslationResults",
             JSON.stringify(result)
         );
 
-        // Open the results page after the backend responds successfully.
         window.location.href = "results.html";
 
     } catch (error) {
@@ -160,17 +161,15 @@ form.onsubmit = async (event) => {
         alert(
             "The translation request failed.\n\n" +
             error.message +
-            "\n\nCheck your Cloud Run URL, backend logs, " +
-            "and browser console."
+            "\n\nCheck your Cloud Run URL and backend logs."
         );
 
     } finally {
         if (submitButton) {
             submitButton.disabled = false;
-            submitButton.textContent = "Analyze";
+            submitButton.textContent = originalButtonText;
         }
     }
 };
 
-// Initialize the language dropdowns when the page loads.
 sync();
