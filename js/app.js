@@ -292,4 +292,30 @@ async function initialize() {
     }
 }
 
+async function initialize() {
+    count.max = MAX_STEPS;
+    count.value = Math.max(
+        1,
+        Math.min(MAX_STEPS, Number(count.value) || 1)
+    );
+
+    if (API_URL.includes("YOUR-CLOUD-RUN-URL")) {
+        sync();
+        console.warn("Set API_URL in js/app.js to your Cloud Run URL.");
+        return;
+    }
+
+    try {
+        await loadLanguages();
+        sync();
+    } catch (error) {
+        console.error("Could not load supported languages:", error);
+        sync();
+        alert(
+            "Could not load the Google Translate language list.\n\n" +
+            error.message
+        );
+    }
+}
+
 initialize();
