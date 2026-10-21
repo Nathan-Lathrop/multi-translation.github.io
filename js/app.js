@@ -1,86 +1,179 @@
-
 const form = document.getElementById("analysisForm");
 const text = document.getElementById("sourceText");
 const chain = document.getElementById("languageChain");
 const add = document.getElementById("addLanguage");
 const count = document.getElementById("translationCount");
 
-// Replace this with your real Cloud Run service URL.
 const API_URL = "https://indy-2-api-1074577122547.us-east1.run.app/";
 
-const opts = [
-    ["zh-CN", "Chinese (zh-CN)"],
-    ["es", "Spanish (es)"],
-    ["ar", "Arabic (ar)"],
-    ["fr", "French (fr)"],
-    ["de", "German (de)"],
-    ["ja", "Japanese (ja)"],
-    ["ru", "Russian (ru)"],
-    ["pt", "Portuguese (pt)"],
-    ["it", "Italian (it)"],
-    ["ko", "Korean (ko)"]
-];
+const MAX_STEPS = 10;
+const RANDOM_VALUE = "__random__";
 
-function makeSelect(i) {
+let languageOptions = [];
+
+function normalizeLanguages(data) {
+    const languages = data.languages || [];
+
+    // Supports the list-of-objects format from the updated backend.
+    if (Array.isArray(languages)) {
+        return languages
+            .map((language) => ({
+                code: language.code || language.language_code,
+                name: language.name || language.display_name
+            }))
+            .filter((language) => language.code && language.name)
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    // Also supports a code-to-name object, if your existing API uses one.
+    return Object.entries(languages)
+        .map(([code, name]) => ({ code, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function createOption(value, label) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    return option;
+}
+
+function populateSelect(select, searchTerm = "") {
+    const previousValue = select.value;
+    const query = searchTerm.trim().toLocaleLowerCase();
+
+    select.replaceChildren(
+        createOption(RANDOM_VALUE, "Random — choose automatically")
+    );
+
+    const filteredLanguages = languageOptions.filter((language) => {
+        return (
+            language.name.toLocaleLowerCase().includes(query) ||
+            language.code.toLocaleLowerCase().includes(query)
+        );
+    });
+
+    filteredLanguages.forEach((language) => {
+        select.appendChild(
+            createOption(
+                language.code,
+                `${language.name} (${language.code})`
+            )
+        );
+    });
+
+    const previousValueExists = [...select.options].some(
+        (option) => option.value === previousValue
+    );
+
+    if (previousValueExists) {
+        select.value = previousValue;
+    } else if (filteredLanguages.length > 0) {
+        select.value = filteredLanguages[0].code;
+    } else {
+        select.value = RANDOM_VALUE;
+    }
+}
+
+function makeSelect(stepNumber) {
     const wrapper = document.createElement("div");
     wrapper.className = "language-step";
 
+    const search = document.createElement("input");
+    search.type = "search";
+    search.className = "language-search";
+    search.placeholder = "Search languages...";
+    search.setAttribute(
+        "aria-label",
+        `Search languages for step ${stepNumber}`
+    );
+    search.autocomplete = "off";
+
     const select = document.createElement("select");
     select.className = "language-select";
-    select.setAttribute("aria-label", `Translation language ${i}`);
+    select.setAttribute(
+        "aria-label",
+        `Translation language for step ${stepNumber}`
+    );
 
-    opts.forEach(([code, name]) => {
-        const option = document.createElement("option");
-        option.value = code;
-        option.textContent = name;
-        select.appendChild(option);
+    populateSelect(select);
+
+    search.addEventListener("input", () => {
+        populateSelect(select, search.value);
     });
 
-    select.selectedIndex = Math.min(i - 1, opts.length - 1);
-
-    wrapper.appendChild(select);
+    wrapper.append(search, select);
     return wrapper;
 }
 
 function sync() {
-    const numberOfSteps = Number(count.value);
+    const numberOfSteps = Math.max(
+        1,
+        Math.min(MAX_STEPS, Number(count.value) || 1)
+    );
 
-    while (
-        chain.querySelectorAll(".language-step").length <
-        numberOfSteps
-    ) {
+    count.value = numberOfSteps;
+    count.max = MAX_STEPS;
+
+    while (chain.querySelectorAll(".language-step").length < numberOfSteps) {
+        const existingSteps =
+            chain.querySelectorAll(".language-step").length;
         const arrow = document.createElement("span");
         arrow.className = "chain-arrow";
         arrow.textContent = "→";
 
-        const nextStep =
-            chain.querySelectorAll(".language-step").length + 1;
-
-        chain.append(arrow, makeSelect(nextStep));
+        chain.append(arrow, makeSelect(existingSteps + 1));
     }
 
     const steps = [...chain.querySelectorAll(".language-step")];
     const arrows = [...chain.querySelectorAll(".chain-arrow")];
 
-    steps.forEach((step, i) => {
-        step.style.display = i < numberOfSteps ? "" : "none";
+    steps.forEach((step, index) => {
+        step.style.display = index < numberOfSteps ? "" : "none";
     });
 
-    arrows.forEach((arrow, i) => {
-        arrow.style.display = i < numberOfSteps - 1 ? "" : "none";
+    arrows.forEach((arrow, index) => {
+        arrow.style.display = index < numberOfSteps - 1 ? "" : "none";
     });
 }
 
+function getSelectedLanguages() {
+    return [...chain.querySelectorAll(".language-step")]
+        .filter((step) => step.style.display !== "none")
+        .map((step) => step.querySelector(".language-select").value);
+}
+
 add.onclick = () => {
-    if (Number(count.value) < 5) {
+    if (Number(count.value) < MAX_STEPS) {
         count.value = Number(count.value) + 1;
         sync();
     } else {
-        alert("Phase 1 supports up to five translation steps.");
+        alert(`The maximum path length is ${MAX_STEPS} translation steps.`);
     }
 };
 
 count.onchange = sync;
+
+async function loadLanguages() {
+    const response = await fetch(`${API_URL}/languages`);
+
+    if (!response.ok) {
+        throw new Error(`Unable to load languages (HTTP ${response.status}).`);
+    }
+
+    const data = await response.json();
+    languageOptions = normalizeLanguages(data);
+
+    if (languageOptions.length === 0) {
+        throw new Error("The backend returned no supported languages.");
+    }
+
+    // Refresh existing selectors while preserving their current selections.
+    chain.querySelectorAll(".language-select").forEach((select) => {
+        const search = select.parentElement.querySelector(".language-search");
+        populateSelect(select, search ? search.value : "");
+    });
+}
 
 form.onsubmit = async (event) => {
     event.preventDefault();
@@ -93,15 +186,21 @@ form.onsubmit = async (event) => {
     }
 
     if (API_URL.includes("YOUR-CLOUD-RUN-URL")) {
-        alert("Replace the API_URL placeholder in app.js with your Cloud Run URL.");
+        alert("Set API_URL in js/app.js to your actual Cloud Run URL.");
         return;
     }
 
-    const selectedLanguages = [
-        ...chain.querySelectorAll(".language-select")
-    ]
-        .filter(select => select.parentElement.style.display !== "none")
-        .map(select => select.value);
+    if (languageOptions.length === 0) {
+        alert("The language list has not loaded. Please refresh and try again.");
+        return;
+    }
+
+    const selectedLanguages = getSelectedLanguages();
+
+    if (selectedLanguages.length === 0) {
+        alert("Add at least one translation step.");
+        return;
+    }
 
     const submitButton = form.querySelector('[type="submit"]');
     const originalButtonText = submitButton
@@ -116,9 +215,7 @@ form.onsubmit = async (event) => {
     try {
         const response = await fetch(`${API_URL}/translate`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 text: inputText,
                 languages: selectedLanguages
@@ -126,7 +223,6 @@ form.onsubmit = async (event) => {
         });
 
         const responseText = await response.text();
-
         let result;
 
         try {
@@ -139,7 +235,7 @@ form.onsubmit = async (event) => {
 
         if (!response.ok) {
             throw new Error(
-                result.detail || `Backend error: ${response.status}`
+                result.detail || `Translation failed (HTTP ${response.status}).`
             );
         }
 
@@ -154,16 +250,13 @@ form.onsubmit = async (event) => {
         );
 
         window.location.href = "results.html";
-
     } catch (error) {
         console.error("Translation request failed:", error);
-
         alert(
             "The translation request failed.\n\n" +
             error.message +
             "\n\nCheck your Cloud Run URL and backend logs."
         );
-
     } finally {
         if (submitButton) {
             submitButton.disabled = false;
@@ -172,4 +265,31 @@ form.onsubmit = async (event) => {
     }
 };
 
-sync();
+async function initialize() {
+    count.max = MAX_STEPS;
+
+    // Keep the existing starting step count, but enforce the new limit.
+    count.value = Math.max(
+        1,
+        Math.min(MAX_STEPS, Number(count.value) || 1)
+    );
+
+    sync();
+
+    if (API_URL.includes("YOUR-CLOUD-RUN-URL")) {
+        console.warn("Set API_URL in js/app.js to your Cloud Run URL.");
+        return;
+    }
+
+    try {
+        await loadLanguages();
+    } catch (error) {
+        console.error("Could not load supported languages:", error);
+        alert(
+            "Could not load the Google Translate language list.\n\n" +
+            error.message
+        );
+    }
+}
+
+initialize();
