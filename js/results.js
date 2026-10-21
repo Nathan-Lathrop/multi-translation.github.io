@@ -99,12 +99,12 @@ document.addEventListener("DOMContentLoaded", () => {
     addTextElement(container, "p", displayPath.join(" → "));
 
     // Show the final translation.
-    addTextElement(container, "h3", "Final Translation");
+    addTextElement(container, "h3", "Final English Back-Translation");
 
-    addTextElement(
-        container,
+    addElement(
+        resultsContainer,
         "p",
-        result.final_translation || "No final translation returned."
+        result.final_translation || "No English back-translation returned."
     );
 
     // Show each translation step.
