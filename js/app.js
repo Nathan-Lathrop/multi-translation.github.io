@@ -272,33 +272,6 @@ form.onsubmit = async (event) => {
 
 async function initialize() {
     count.max = MAX_STEPS;
-
-    // Keep the existing starting step count, but enforce the new limit.
-    count.value = Math.max(
-        1,
-        Math.min(MAX_STEPS, Number(count.value) || 1)
-    );
-
-    sync();
-
-    if (API_URL.includes("YOUR-CLOUD-RUN-URL")) {
-        console.warn("Set API_URL in js/app.js to your Cloud Run URL.");
-        return;
-    }
-
-    try {
-        await loadLanguages();
-    } catch (error) {
-        console.error("Could not load supported languages:", error);
-        alert(
-            "Could not load the Google Translate language list.\n\n" +
-            error.message
-        );
-    }
-}
-
-async function initialize() {
-    count.max = MAX_STEPS;
     count.value = Math.max(
         1,
         Math.min(MAX_STEPS, Number(count.value) || 1)
