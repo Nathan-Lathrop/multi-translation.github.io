@@ -68,8 +68,6 @@ function populateSelect(select, searchTerm = "") {
 
     if (previousValueExists) {
         select.value = previousValue;
-    } else if (filteredLanguages.length > 0) {
-        select.value = filteredLanguages[0].code;
     } else {
         select.value = RANDOM_VALUE;
     }
