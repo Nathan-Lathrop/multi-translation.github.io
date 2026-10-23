@@ -116,14 +116,19 @@ function sync() {
     count.max = MAX_STEPS;
 
     while (chain.querySelectorAll(".language-step").length < numberOfSteps) {
-        const existingSteps =
-            chain.querySelectorAll(".language-step").length;
+    const existingSteps =
+        chain.querySelectorAll(".language-step").length;
+
+    // Add the arrow between steps, never before the first step.
+    if (existingSteps > 0) {
         const arrow = document.createElement("span");
         arrow.className = "chain-arrow";
         arrow.textContent = "→";
-
-        chain.append(arrow, makeSelect(existingSteps + 1));
+        chain.appendChild(arrow);
     }
+
+    chain.appendChild(makeSelect(existingSteps + 1));
+}
 
     const steps = [...chain.querySelectorAll(".language-step")];
     const arrows = [...chain.querySelectorAll(".chain-arrow")];
