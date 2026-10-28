@@ -35,7 +35,7 @@
                 <p id="originalMessage">Loading original message...</p>
             </div>
 
-            <!-- Populated by results.js -->
+            <!-- Translation path, final translation, step details, and similarity summary -->
             <div id="translationResults"></div>
 
             <div class="table-wrapper">
@@ -46,11 +46,13 @@
                             <th>Language</th>
                             <th>Translation</th>
                             <th>Back-Translation (English)</th>
+                            <th>Similarity Score</th>
+                            <th>Estimated Meaning Loss</th>
                         </tr>
                     </thead>
                     <tbody id="translationTableBody">
                         <tr>
-                            <td colspan="4">Loading translation results...</td>
+                            <td colspan="6">Loading translation results...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -65,10 +67,13 @@
             </div>
 
             <div class="prototype-note">
-                <strong>Current implementation:</strong>
-                Translations are retrieved from Google Cloud Translation.
-                Semantic similarity scoring has not yet been connected, so
-                similarity scores and loss values are not currently available.
+                <strong>About the scores:</strong>
+                Translation text is provided by Google Cloud Translation.
+                Semantic similarity is estimated by an AI model by comparing
+                each English back-translation with the previous English text.
+                Estimated meaning loss is calculated from the normalized
+                similarity score. These scores are estimates, not literal
+                percentages of meaning preserved or lost.
             </div>
         </section>
     </main>
