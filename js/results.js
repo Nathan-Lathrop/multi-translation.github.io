@@ -24,17 +24,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatPercent(value) {
-        if (value === null || value === undefined || value === "") {
+        if (!hasScore(value)) {
             return "Unavailable";
         }
 
-        const number = Number(value);
-
-        if (!Number.isFinite(number)) {
-            return "Unavailable";
-        }
-
-        return `${number.toFixed(2)}%`;
+        return `${Number(value).toFixed(2)}%`;
     }
 
     function hasScore(value) {
@@ -44,6 +38,14 @@ document.addEventListener("DOMContentLoaded", () => {
             value !== "" &&
             Number.isFinite(Number(value))
         );
+    }
+
+    function formatPercentagePoints(value) {
+        if (!hasScore(value)) {
+            return "Unavailable";
+        }
+
+        return `${Number(value).toFixed(2)} percentage points`;
     }
 
     function getScoreText(value) {
@@ -117,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
         selectedLanguages = [];
     }
 
-    // Display the translation path.
+    // Translation path.
     addSectionHeading(container, "Translation Path");
 
     const pathLanguages = Array.isArray(result.language_path_display)
@@ -137,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     addTextElement(container, "p", displayPath.join(" → "));
 
-    // Display the final English back-translation.
+    // Final English back-translation.
     addSectionHeading(container, "Final English Back-Translation");
 
     addTextElement(
@@ -146,7 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
         result.final_translation || "No English back-translation returned."
     );
 
-    // Display the individual translation steps.
     addSectionHeading(container, "Translation Steps");
 
     if (steps.length === 0) {
@@ -155,25 +156,32 @@ document.addEventListener("DOMContentLoaded", () => {
         if (tableBody) {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 6;
+            cell.colSpan = 7;
             cell.textContent = "No translation steps were returned.";
             row.appendChild(cell);
             tableBody.appendChild(row);
         }
 
-        addSectionHeading(container, "Semantic Similarity");
+        addSectionHeading(container, "Similarity and Meaning Loss");
+
         addTextElement(
             container,
             "p",
-            "No similarity scores are available because the backend returned no translation steps."
+            "No scores are available because the backend returned no translation steps."
         );
 
         return;
     }
 
     let availableScoreCount = 0;
-    let greatestLossStep = null;
-    let greatestLoss = -Infinity;
+
+    let greatestCumulativeLoss = -Infinity;
+    let greatestCumulativeLossStep = null;
+
+    let greatestStepDrop = -Infinity;
+    let greatestStepDropStep = null;
+
+    let previousSimilarity = null;
 
     steps.forEach((step, index) => {
         const stepNumber = step.step ?? index + 1;
@@ -191,16 +199,39 @@ document.addEventListener("DOMContentLoaded", () => {
         const scoreAvailable = hasScore(step.similarity_score);
         const lossAvailable = hasScore(step.estimated_meaning_loss);
 
+        // Calculate the step-to-step drop from the original-relative scores.
+        // A positive value means similarity to the original decreased.
+        // A negative value means similarity to the original improved.
+        let stepDrop = null;
+
         if (scoreAvailable) {
             availableScoreCount++;
+
+            const currentSimilarity = Number(step.similarity_score);
+
+            if (previousSimilarity !== null) {
+                stepDrop = Number(
+                    (previousSimilarity - currentSimilarity).toFixed(2)
+                );
+
+                if (stepDrop > greatestStepDrop) {
+                    greatestStepDrop = stepDrop;
+                    greatestStepDropStep = stepNumber;
+                }
+            }
+
+            previousSimilarity = currentSimilarity;
+        } else {
+            // Do not calculate a difference across a missing score.
+            previousSimilarity = null;
         }
 
         if (
             lossAvailable &&
-            Number(step.estimated_meaning_loss) > greatestLoss
+            Number(step.estimated_meaning_loss) > greatestCumulativeLoss
         ) {
-            greatestLoss = Number(step.estimated_meaning_loss);
-            greatestLossStep = stepNumber;
+            greatestCumulativeLoss = Number(step.estimated_meaning_loss);
+            greatestCumulativeLossStep = stepNumber;
         }
 
         // Detailed result card.
@@ -239,18 +270,22 @@ document.addEventListener("DOMContentLoaded", () => {
             step.back_translation || "(No back-translation returned)"
         );
 
-        // Semantic similarity results for this step.
-        addTextElement(card, "h5", "Semantic Similarity Analysis");
+        // Output 1: similarity to the original message.
+        addTextElement(card, "h5", "Similarity to Original Message");
 
         addTextElement(
             card,
             "p",
-            `Comparison text: ${
-                step.comparison_text ||
-                (index === 0
-                    ? result.original_text || originalText || "(Unavailable)"
-                    : steps[index - 1]?.back_translation ||
-                      "(Previous back-translation unavailable)")
+            `Original message: ${
+                result.original_text || originalText || "(Unavailable)"
+            }`
+        );
+
+        addTextElement(
+            card,
+            "p",
+            `Back-translation: ${
+                step.back_translation || "(Unavailable)"
             }`
         );
 
@@ -260,17 +295,35 @@ document.addEventListener("DOMContentLoaded", () => {
             `Similarity score: ${getScoreText(step.similarity_score)}`
         );
 
+        // Output 2: cumulative loss relative to the original message.
+        addTextElement(card, "h5", "Cumulative Meaning Loss");
+
         addTextElement(
             card,
             "p",
-            `Estimated meaning loss: ${getScoreText(
+            `Estimated loss from original: ${getScoreText(
                 step.estimated_meaning_loss
             )}`
         );
 
+        // Output 3: change from the preceding step.
+        addTextElement(card, "h5", "Change Since Previous Step");
+
+        addTextElement(
+            card,
+            "p",
+            stepDrop === null
+                ? "No previous step score available for comparison."
+                : stepDrop > 0
+                    ? `Similarity decreased by ${formatPercentagePoints(stepDrop)}.`
+                    : stepDrop < 0
+                        ? `Similarity increased by ${formatPercentagePoints(Math.abs(stepDrop))}.`
+                        : "Similarity did not change from the previous step."
+        );
+
         container.appendChild(card);
 
-        // Populate the results table.
+        // Results table.
         if (tableBody) {
             const row = document.createElement("tr");
 
@@ -286,25 +339,31 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             addTableCell(row, getScoreText(step.similarity_score));
             addTableCell(row, getScoreText(step.estimated_meaning_loss));
+            addTableCell(
+                row,
+                stepDrop === null
+                    ? "N/A"
+                    : formatPercentagePoints(stepDrop)
+            );
 
             tableBody.appendChild(row);
         }
     });
 
-    // Semantic similarity overview and greatest-loss alert.
-    addSectionHeading(container, "Semantic Similarity");
+    // Summary of all three outputs.
+    addSectionHeading(container, "Similarity and Meaning Loss Summary");
 
     if (availableScoreCount === 0) {
         addTextElement(
             container,
             "p",
-            "Similarity scores are unavailable. Confirm that the backend has the similarity model installed, that scoring is enabled, and that the latest backend version has been deployed."
+            "Similarity scores are unavailable. Check that the backend calculates and returns similarity_score and estimated_meaning_loss for each step."
         );
     } else {
         addTextElement(
             container,
             "p",
-            `Similarity scores are available for ${availableScoreCount} of ${steps.length} translation steps. Each step compares its English back-translation with the preceding English text. The first step is compared with the original message.`
+            `Similarity-to-original scores are available for ${availableScoreCount} of ${steps.length} steps.`
         );
 
         if (result.similarity_model) {
@@ -315,22 +374,51 @@ document.addEventListener("DOMContentLoaded", () => {
             );
         }
 
-        if (greatestLossStep !== null) {
+        // Largest cumulative loss from the original.
+        if (greatestCumulativeLossStep !== null) {
             addTextElement(
                 container,
                 "p",
-                `Greatest estimated meaning loss: Step ${greatestLossStep} (${formatPercent(greatestLoss)}).`
+                `Largest cumulative loss relative to the original: Step ${greatestCumulativeLossStep}, with ${formatPercent(greatestCumulativeLoss)} estimated meaning loss.`
             );
         }
 
+        // Largest loss increase between consecutive steps.
+        if (greatestStepDropStep !== null && greatestStepDrop > 0) {
+            addTextElement(
+                container,
+                "p",
+                `Largest step-to-step similarity drop: Step ${greatestStepDropStep}, decreasing by ${formatPercentagePoints(greatestStepDrop)} compared with the preceding step.`
+            );
+        } else if (greatestStepDropStep !== null) {
+            addTextElement(
+                container,
+                "p",
+                "No decrease in similarity was observed between consecutive steps."
+            );
+        } else {
+            addTextElement(
+                container,
+                "p",
+                "A step-to-step change could not be calculated because at least two consecutive similarity scores were unavailable."
+            );
+        }
+
+        // Populate the existing alert with the most important change.
         if (similarityResults && similaritySummary && similarityDetails) {
-            if (greatestLossStep !== null) {
+            if (greatestStepDropStep !== null && greatestStepDrop > 0) {
                 similaritySummary.textContent =
-                    `Greatest estimated meaning loss: Step ${greatestLossStep}`;
+                    `Largest similarity drop: Step ${greatestStepDropStep}`;
 
                 similarityDetails.textContent =
-                    ` The estimated loss for this step is ${formatPercent(greatestLoss)}. These values are model-based estimates, not literal percentages of meaning lost.`;
+                    ` Similarity to the original decreased by ${formatPercentagePoints(greatestStepDrop)} at this step.`;
+                similarityResults.hidden = false;
+            } else if (greatestCumulativeLossStep !== null) {
+                similaritySummary.textContent =
+                    `Largest cumulative loss: Step ${greatestCumulativeLossStep}`;
 
+                similarityDetails.textContent =
+                    ` Estimated meaning loss relative to the original is ${formatPercent(greatestCumulativeLoss)}.`;
                 similarityResults.hidden = false;
             }
         }
@@ -339,6 +427,6 @@ document.addEventListener("DOMContentLoaded", () => {
     addTextElement(
         container,
         "p",
-        "Interpretation: Similarity is a model-based estimate of how semantically related two English texts are. Estimated meaning loss is calculated as 100 minus the normalized similarity score. Neither value is a guaranteed or scientifically calibrated percentage of meaning preserved or lost."
+        "Interpretation: Similarity scores compare each English back-translation with the original message. Estimated cumulative meaning loss is calculated as 100 minus that similarity score. The step-to-step change is the previous step's similarity minus the current step's similarity. A positive change indicates a decrease; a negative change indicates an improvement. These are model-based estimates, not calibrated percentages of meaning preserved or lost."
     );
 });
