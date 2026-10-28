@@ -35,7 +35,7 @@
                 <p id="originalMessage">Loading original message...</p>
             </div>
 
-            <!-- Translation path, final translation, step details, and similarity summary -->
+            <!-- Translation path, final translation, step details, and summary -->
             <div id="translationResults"></div>
 
             <div class="table-wrapper">
@@ -46,13 +46,14 @@
                             <th>Language</th>
                             <th>Translation</th>
                             <th>Back-Translation (English)</th>
-                            <th>Similarity Score</th>
-                            <th>Estimated Meaning Loss</th>
+                            <th>Similarity to Original</th>
+                            <th>Cumulative Meaning Loss</th>
+                            <th>Loss Increase vs. Previous Step</th>
                         </tr>
                     </thead>
                     <tbody id="translationTableBody">
                         <tr>
-                            <td colspan="6">Loading translation results...</td>
+                            <td colspan="7">Loading translation results...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -69,11 +70,14 @@
             <div class="prototype-note">
                 <strong>About the scores:</strong>
                 Translation text is provided by Google Cloud Translation.
-                Semantic similarity is estimated by an AI model by comparing
-                each English back-translation with the previous English text.
-                Estimated meaning loss is calculated from the normalized
-                similarity score. These scores are estimates, not literal
-                percentages of meaning preserved or lost.
+                Similarity scores compare each English back-translation with
+                the original message. Cumulative meaning loss is calculated
+                as 100 minus similarity to the original. Loss increase
+                compares the current step's similarity with the previous
+                step's similarity. A positive value means similarity decreased;
+                a negative value means similarity improved. All scores are
+                model-based estimates rather than literal percentages of
+                meaning preserved or lost.
             </div>
         </section>
     </main>
