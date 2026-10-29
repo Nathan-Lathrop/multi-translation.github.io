@@ -48,12 +48,13 @@
                             <th>Back-Translation (English)</th>
                             <th>Similarity to Original</th>
                             <th>Cumulative Meaning Loss</th>
+                            <th>Similarity to Previous Step</th>
                             <th>Loss Increase vs. Previous Step</th>
                         </tr>
                     </thead>
                     <tbody id="translationTableBody">
                         <tr>
-                            <td colspan="7">Loading translation results...</td>
+                            <td colspan="8">Loading translation results...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -70,12 +71,16 @@
             <div class="prototype-note">
                 <strong>About the scores:</strong>
                 Translation text is provided by Google Cloud Translation.
-                Similarity scores compare each English back-translation with
-                the original message. Cumulative meaning loss is calculated
-                as 100 minus similarity to the original. Loss increase
-                compares the current step's similarity with the previous
-                step's similarity. A positive value means similarity decreased;
-                a negative value means similarity improved. All scores are
+                Similarity to Original compares each English back-translation
+                with the original message. Cumulative Meaning Loss is
+                calculated as 100 minus similarity to the original.
+                Similarity to Previous Step compares the current English
+                back-translation with the preceding English text. For Step 1,
+                the original message is used as the comparison text.
+                Loss Increase vs. Previous Step measures the change in
+                similarity to the original compared with the preceding step.
+                A positive value means similarity to the original decreased;
+                a negative value means it improved. All scores are
                 model-based estimates rather than literal percentages of
                 meaning preserved or lost.
             </div>
