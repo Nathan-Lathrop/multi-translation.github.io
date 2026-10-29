@@ -156,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (tableBody) {
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 7;
+            cell.colSpan = 8;
             cell.textContent = "No translation steps were returned.";
             row.appendChild(cell);
             tableBody.appendChild(row);
@@ -174,6 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let availableScoreCount = 0;
+    let availablePreviousStepScoreCount = 0;
 
     let greatestCumulativeLoss = -Infinity;
     let greatestCumulativeLossStep = null;
@@ -198,10 +199,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const scoreAvailable = hasScore(step.similarity_score);
         const lossAvailable = hasScore(step.estimated_meaning_loss);
+        const previousStepScoreAvailable = hasScore(
+            step.previous_step_similarity_score
+        );
 
-        // Calculate the step-to-step drop from the original-relative scores.
-        // A positive value means similarity to the original decreased.
-        // A negative value means similarity to the original improved.
+        // Calculate the step-to-step drop using the original-relative scores.
+        // This is separate from similarity to the previous step.
         let stepDrop = null;
 
         if (scoreAvailable) {
@@ -224,6 +227,10 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             // Do not calculate a difference across a missing score.
             previousSimilarity = null;
+        }
+
+        if (previousStepScoreAvailable) {
+            availablePreviousStepScoreCount++;
         }
 
         if (
@@ -306,7 +313,18 @@ document.addEventListener("DOMContentLoaded", () => {
             )}`
         );
 
-        // Output 3: change from the preceding step.
+        // Output 3: similarity between consecutive English texts.
+        addTextElement(card, "h5", "Similarity to Previous Step");
+
+        addTextElement(
+            card,
+            "p",
+            `Similarity score: ${getScoreText(
+                step.previous_step_similarity_score
+            )}`
+        );
+
+        // Output 4: change in similarity to the original since the prior step.
         addTextElement(card, "h5", "Change Since Previous Step");
 
         addTextElement(
@@ -315,10 +333,10 @@ document.addEventListener("DOMContentLoaded", () => {
             stepDrop === null
                 ? "No previous step score available for comparison."
                 : stepDrop > 0
-                    ? `Similarity decreased by ${formatPercentagePoints(stepDrop)}.`
+                    ? `Similarity to the original decreased by ${formatPercentagePoints(stepDrop)}.`
                     : stepDrop < 0
-                        ? `Similarity increased by ${formatPercentagePoints(Math.abs(stepDrop))}.`
-                        : "Similarity did not change from the previous step."
+                        ? `Similarity to the original increased by ${formatPercentagePoints(Math.abs(stepDrop))}.`
+                        : "Similarity to the original did not change from the previous step."
         );
 
         container.appendChild(card);
@@ -341,6 +359,10 @@ document.addEventListener("DOMContentLoaded", () => {
             addTableCell(row, getScoreText(step.estimated_meaning_loss));
             addTableCell(
                 row,
+                getScoreText(step.previous_step_similarity_score)
+            );
+            addTableCell(
+                row,
                 stepDrop === null
                     ? "N/A"
                     : formatPercentagePoints(stepDrop)
@@ -350,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Summary of all three outputs.
+    // Summary of all four outputs.
     addSectionHeading(container, "Similarity and Meaning Loss Summary");
 
     if (availableScoreCount === 0) {
@@ -364,6 +386,12 @@ document.addEventListener("DOMContentLoaded", () => {
             container,
             "p",
             `Similarity-to-original scores are available for ${availableScoreCount} of ${steps.length} steps.`
+        );
+
+        addTextElement(
+            container,
+            "p",
+            `Previous-step similarity scores are available for ${availablePreviousStepScoreCount} of ${steps.length} steps.`
         );
 
         if (result.similarity_model) {
@@ -388,13 +416,13 @@ document.addEventListener("DOMContentLoaded", () => {
             addTextElement(
                 container,
                 "p",
-                `Largest step-to-step similarity drop: Step ${greatestStepDropStep}, decreasing by ${formatPercentagePoints(greatestStepDrop)} compared with the preceding step.`
+                `Largest step-to-step similarity drop relative to the original: Step ${greatestStepDropStep}, decreasing by ${formatPercentagePoints(greatestStepDrop)} compared with the preceding step.`
             );
         } else if (greatestStepDropStep !== null) {
             addTextElement(
                 container,
                 "p",
-                "No decrease in similarity was observed between consecutive steps."
+                "No decrease in similarity to the original was observed between consecutive steps."
             );
         } else {
             addTextElement(
@@ -427,6 +455,6 @@ document.addEventListener("DOMContentLoaded", () => {
     addTextElement(
         container,
         "p",
-        "Interpretation: Similarity scores compare each English back-translation with the original message. Estimated cumulative meaning loss is calculated as 100 minus that similarity score. The step-to-step change is the previous step's similarity minus the current step's similarity. A positive change indicates a decrease; a negative change indicates an improvement. These are model-based estimates, not calibrated percentages of meaning preserved or lost."
+        "Interpretation: Similarity to Original compares each English back-translation with the original message. Cumulative Meaning Loss is calculated as 100 minus that similarity score. Similarity to Previous Step compares the current English back-translation with the immediately preceding English text; for Step 1, the original message is used. Loss Increase vs. Previous Step is calculated by subtracting the current step's similarity to the original from the preceding step's similarity to the original. A positive value indicates a decrease in similarity to the original, while a negative value indicates an improvement. These are model-based estimates, not calibrated percentages of meaning preserved or lost."
     );
 });
