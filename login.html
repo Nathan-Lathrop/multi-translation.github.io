@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Indy-2 | Sign In</title>
+
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="brand">
+            <div class="brand-name">Indy-2</div>
+            <div class="brand-subtitle">Multi-Translation Analysis</div>
+        </div>
+
+        <nav class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="history.html">History</a>
+            <a href="login.html">Sign In</a>
+            <a href="index.html#about">About</a>
+        </nav>
+    </header>
+
+    <main class="page-container login-page">
+        <section class="login-card">
+
+            <div class="login-heading">
+                <span class="eyebrow">Indy-2 Account</span>
+                <h1 id="formTitle">Sign In</h1>
+
+                <p id="formDescription">
+                    Sign in to access your account and saved translation history.
+                </p>
+            </div>
+
+            <!-- Sign-in and account creation form -->
+            <form id="authForm">
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Enter your email address"
+                        autocomplete="email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        minlength="6"
+                        required
+                    >
+                </div>
+
+                <div class="form-group" id="confirmPasswordGroup" hidden>
+                    <label for="confirmPassword">Confirm Password</label>
+
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        placeholder="Re-enter your password"
+                        autocomplete="new-password"
+                        minlength="6"
+                    >
+                </div>
+
+                <button type="submit" id="submitButton" class="login-button">
+                    Sign In
+                </button>
+
+                <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+            </form>
+
+            <div class="login-options">
+
+                <button type="button" id="forgotPasswordButton" class="text-button">
+                    Forgot Password?
+                </button>
+
+                <p id="accountToggle">
+                    Don't have an account?
+                    <button type="button" id="toggleAuthButton" class="text-button">
+                        Create an Account
+                    </button>
+                </p>
+
+            </div>
+
+            <div class="login-footer">
+                <a href="index.html">Return to Home</a>
+            </div>
+
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <span>Indy-2 — AI 7993 Capstone</span>
+        <span>Multi-Translation Analysis</span>
+    </footer>
+
+    <script type="module" src="js/login.js"></script>
+</body>
+</html>
