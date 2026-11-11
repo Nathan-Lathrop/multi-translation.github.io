@@ -1,3 +1,11 @@
+import { auth, db } from "./firebase.js";
+
+import {
+    addDoc,
+    collection,
+    serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
 const form = document.getElementById("analysisForm");
 const text = document.getElementById("sourceText");
 const chain = document.getElementById("languageChain");
@@ -178,6 +186,28 @@ async function loadLanguages() {
     });
 }
 
+// Saves a completed translation to the signed-in user's history in Firestore.
+// Only signed-in users are saved, since the history is stored per account.
+async function saveTranslationHistory(inputText, result) {
+    const user = auth.currentUser;
+
+    if (!user) {
+        console.info("Translation history was not saved because no user is signed in.");
+        return;
+    }
+
+    try {
+        await addDoc(collection(db, "users", user.uid, "translationHistory"), {
+            created_at: serverTimestamp(),
+            original_text: inputText,
+            languages: result.language_path ?? [],
+            translation_result: result
+        });
+    } catch (error) {
+        console.error("Unable to save translation history:", error);
+    }
+}
+
 form.onsubmit = async (event) => {
     event.preventDefault();
 
@@ -251,6 +281,8 @@ form.onsubmit = async (event) => {
             "indy2TranslationResults",
             JSON.stringify(result)
         );
+
+        await saveTranslationHistory(inputText, result);
 
         window.location.href = "results.html";
     } catch (error) {

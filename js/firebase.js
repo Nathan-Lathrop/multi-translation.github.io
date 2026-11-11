@@ -4,18 +4,31 @@ import { initializeApp } from
 import { getAuth } from
     "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-// Replace these values with your Firebase Web App configuration.
+import { getFirestore } from
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import { getAnalytics } from
+    "https://www.gstatic.com/firebasejs/10.12.5/firebase-analytics.js";
+
+// Your web app's Firebase configuration.
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyBakZ-IjROlIRiudvEQtvieyCd0lSXi3Wg",
+    authDomain: "multi-translation.firebaseapp.com",
+    projectId: "multi-translation",
+    storageBucket: "multi-translation.firebasestorage.app",
+    messagingSenderId: "491306701268",
+    appId: "1:491306701268:web:4bd6e97a966aafe0904641",
+    measurementId: "G-XBZBH4KLT6"
 };
 
 // Initialize Firebase.
 const app = initializeApp(firebaseConfig);
 
+// Initialize Google Analytics.
+export const analytics = getAnalytics(app);
+
 // Initialize Firebase Authentication.
 export const auth = getAuth(app);
+
+// Initialize Cloud Firestore for saving translation history.
+export const db = getFirestore(app);

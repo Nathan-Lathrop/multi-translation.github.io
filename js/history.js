@@ -1,12 +1,16 @@
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 
 import {
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-// Replace this with your actual Google Cloud Run service URL.
-const API_URL = "https://indy-2-api-1074577122547.us-east1.run.app";
+import {
+    collection,
+    getDocs,
+    orderBy,
+    query
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     const accountStatus = document.getElementById("accountStatus");
@@ -39,7 +43,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return "Unavailable";
         }
 
-        const date = new Date(dateValue);
+        // Firestore timestamps convert to JavaScript dates with toDate().
+        const date = typeof dateValue.toDate === "function"
+            ? dateValue.toDate()
+            : new Date(dateValue);
 
         if (Number.isNaN(date.getTime())) {
             return "Unavailable";
@@ -64,10 +71,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function formatSimilarity(record) {
+        // Saved translations store their steps inside translation_result.
+        const steps = record.translation_result?.steps ?? [];
+        const lastStep = steps[steps.length - 1];
+
         const score =
             record.final_similarity_score ??
             record.final_similarity ??
-            record.similarity_score;
+            record.similarity_score ??
+            lastStep?.similarity_score;
 
         if (score === null || score === undefined) {
             return "Unavailable";
@@ -147,28 +159,18 @@ document.addEventListener("DOMContentLoaded", () => {
             historyLoading.hidden = false;
             historyError.hidden = true;
 
-            const idToken = await user.getIdToken();
+            // Read the signed-in user's saved translations, newest first.
+            const historyQuery = query(
+                collection(db, "users", user.uid, "translationHistory"),
+                orderBy("created_at", "desc")
+            );
 
-            const response = await fetch(`${API_URL}/history`, {
-                method: "GET",
-                headers: {
-                    "Authorization": `Bearer ${idToken}`,
-                    "Content-Type": "application/json"
-                }
-            });
+            const snapshot = await getDocs(historyQuery);
 
-            if (!response.ok) {
-                throw new Error(
-                    `Unable to retrieve history. Server returned ${response.status}.`
-                );
-            }
-
-            const data = await response.json();
-
-            // Supports either { history: [...] } or a direct array.
-            const records = Array.isArray(data)
-                ? data
-                : data.history;
+            const records = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
 
             displayHistory(records);
 
